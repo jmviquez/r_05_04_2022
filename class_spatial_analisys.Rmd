@@ -1,0 +1,111 @@
+---
+title: "classes Spatial Trend Analysis"
+output:
+  pdf_document: default
+  html_document: default
+---
+##Packages 
+```{r}
+library(terra)
+library(hydroTSM)
+library(trend)
+
+
+
+```
+##Trend analysis 
+###Data
+```{r}
+chirps<-"C:/Users/jmviq/Desktop/R_course_and/L2_Spatiotemporal_Statistics/CHIRPS_annual"
+shape<-"C:/Users/jmviq/Desktop/R_course_and/L2_Spatiotemporal_Statistics/Countries/"
+chirps<-list.files(chirps,full.name=TRUE)
+chirps<-rast(chirps)
+shape<-vect(shape)
+##Ethiopia 
+shape<-shape[7,]
+plot(shape)
+```
+
+###Crop
+```{r}
+chirps<-crop(chirps,shape,snap="out")
+chirps<-mask(chirps,shape)
+plot(chirps)
+```
+###MAN-KENDALL TREND
+####non parametric rank-based statistical technique /n
+####null=no monotonic trend /n
+####trend can be positive, negative or non-null /n
+####probability of 5%
+####Sen slope=magnitude by years 
+
+##Aplying the kendall test
+###Funtion for KT
+```{r}
+get_pval<-function(x){
+  if(!any(is.na(x))){
+   mk<-mk.test(x)
+   pval<-mk$p.value
+  } else {
+     pval<-NA
+  }
+    return(pval)
+  }
+
+```
+##Applying the funtion 
+```{r}
+pval_chirps<-app(chirps,get_pval)
+plot(pval_chirps)
+hist(pval_chirps)
+print(pval_chirps)
+```
+##Slope(betha/t)
+####Funtion for SEN slope
+```{r}
+get_slope<-function(x, conf.level=0.95,n.years=nlyr(chirps)){
+  if(!any(is.na(x))){
+  ss<-sens.slope(x,conf.level = conf.level)
+  slope<-ss$estimates*n.years
+  }else{
+    slope<-NA
+    
+  }
+  return(slope)
+  
+}
+```
+
+##Applying the funtion slope  
+```{r}
+svals_chirps<-app(chirps,get_slope)
+plot(svals_chirps)
+lines(shape)
+hist(svals_chirps)
+print(svals_chirps)
+```
+##Masking changes
+```{r}
+sig_changes<-pval_chirps
+sig_changes[sig_changes>0.05]<-NA
+sig_changes[sig_changes>0]<-1
+```
+##Adding direction 
+```{r}
+unit_changes<-svals_chirps/abs(svals_chirps)
+sig_changes<-unit_changes*sig_changes
+plot(sig_changes)
+lines(shape)
+
+
+```
+
+##Results 
+```{r}
+sig_changes<-abs(sig_changes)
+svals_chirps<-svals_chirps*sig_changes
+plot(svals_chirps)
+lines(shape)
+
+
+```
